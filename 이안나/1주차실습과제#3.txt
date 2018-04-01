@@ -1,0 +1,24 @@
+#include <stdio.h>
+
+int main(void){
+ int i, j;
+ int a;
+
+ printf("최대 지름을 입력하세요 : ");
+ scanf_s("%d", &a);
+
+ for(i = 0; i < a; i++){
+  for(j = 0; j < i; j++){
+   printf("*");
+  }
+  printf("O\n");
+ }
+ 
+ for(i = a; i >= 0; i--){
+  for(j = i; j > 0; j--){
+   printf("*");
+  }
+  printf("O\n");
+ }
+ return 0;
+} 
