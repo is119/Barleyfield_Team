@@ -29,7 +29,7 @@ int main(void)
             break;
        }
    }
-   
+   free(ptr);
     return 0;
 }
     //int strncmp(char * dest, const char * src, size_t n);
