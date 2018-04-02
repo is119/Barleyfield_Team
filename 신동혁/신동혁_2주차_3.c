@@ -12,20 +12,20 @@ int main()
 {
 	char str[50];
 	char *temp;
-	char find[10]; //°Ë»öÇÒ ´Ü¾î
+	char find[10]; //ê²€ìƒ‰í•  ë‹¨ì–´
 
-	char *ptr; //°Ë»öµÈ ´Ü¾îÀÇ ÁÖ¼Ò À§Ä¡
-	int pos; //°Ë»öµÈ ´Ü¾îÀÇ À§Ä¡
+	char *ptr; //ê²€ìƒ‰ëœ ë‹¨ì–´ì˜ ì£¼ì†Œ ìœ„ì¹˜
+	int pos; //ê²€ìƒ‰ëœ ë‹¨ì–´ì˜ ìœ„ì¹˜
 	int i;
-	int count = 1; // °Ë»öµÈ ´Ü¾î°¡ ¹®Àå¿¡¼­ ¸î¹øÂ°ÀÎÁö ¼À
+	int count = 1; // ê²€ìƒ‰ëœ ë‹¨ì–´ê°€ ë¬¸ì¥ì—ì„œ ëª‡ë²ˆì§¸ì¸ì§€ ì…ˆ
 
-	printf("¹®ÀÚ¿­À» ÀÔ·ÂÇÏ¼¼¿ä : ");
+	printf("ë¬¸ìì—´ì„ ì…ë ¥í•˜ì„¸ìš” : ");
 	gets(str);
 
 	temp = (char*)malloc(sizeof(str));
 	strcpy(temp, str);
 	
-	printf("Ã£°í ½ÍÀº ´Ü¾î´Â ¹«¾ùÀÎ°¡¿ä? : ");
+	printf("ì°¾ê³  ì‹¶ì€ ë‹¨ì–´ëŠ” ë¬´ì—‡ì¸ê°€ìš”? : ");
 	scanf("%s", find);
 
 	ptr = strstr(temp, find);
@@ -37,7 +37,7 @@ int main()
 		if (str[i] == ' ')
 			count++;
 	}
-	printf("´Ü¾î %s(Àº)´Â %d¹øÂ° À§Ä¡¿¡ ÀÖ½À´Ï´Ù.", find, count);
+	printf("ë‹¨ì–´ %s(ì€)ëŠ” %dë²ˆì§¸ ìœ„ì¹˜ì— ìˆìŠµë‹ˆë‹¤.", find, count);
 
 	
 	printf("\n");
