@@ -1,0 +1,421 @@
+#pragma warning(disable: 4996) // scanf, gets, fopen���� �Լ� ���� ����� ��� ����
+#include <stdio.h> // �⺻ ��� ����
+#include <stdlib.h> // �ý��� �Լ� ȣ�� ��
+#include <conio.h> // gets�Լ� ȣ�� ��
+#include <string.h> // ���ڿ� �Լ� ȣ�� ��
+#include <time.h> // time�Լ��� clock�Լ� ȣ�� ��
+#include <windows.h> // ���� �� ǥ�� �Լ� ȣ�� �� ..
+
+#define HAVE_STRUCT_TIMESPEC // windows.h�� pthread.h���� �ð� ����ü ������ ���� ������
+#include <pthread.h> // ������ ���� ���� ��
+
+#define SPEED 1000 // �ܾ �����Ǵ� ���� (���� : ms). �����Ͽ� ���̵� ���� ����. 500���ϴ� �÷��� �����.
+#define WORD_COUNT 15 // �ܾ� ���� ����
+#define MAX_WORD_LENGTH 19 // �ܾ� ����
+#define S_ARTICLE_COUNT 13 // ª�� �� ���� ����
+#define S_ARTICLE_LENGTH 79 // ª�� �� ����
+#define ESC 0x1b
+#define BS 0x08
+
+char **words; // �꼺�� �ܾ� �����
+
+char **s_article;// ª�� �� ����� 
+
+typedef struct { // �꼺��(�ܾ�) ����ü
+	int x; // �ܾ��� x��ǥ
+	char word[20]; // �ܾ� ���� ����
+} rain;
+
+rain rains[21]; // 20��° rains�� ������.(0~19��°������ ȭ�� ǥ��)
+
+double sec = 0.0; // �÷��� ���� �ð�
+double ph = 7.0; // ���� �̿� ��
+char buffer[50]; // ����� �Է� ����
+
+//void help(); // ���� �Լ�
+//void viewlog(); // ���� ���� �Լ�
+void initrains(); // �ܾ� �迭 �ʱ�ȭ �Լ�
+void gamemain(); // ���� �� �Լ�
+void prnscreen(); // ȭ�� ��� �Լ�
+void makerain(); // �� �ܾ� ���� �Լ�
+void short_article(); // ª�� �� 
+void gotoxy(int x, int y); // Ŀ�� �̵�
+static pthread_t p_thread; // ������ �̸�
+
+void *t_function(void *data); // ������ȭ �� ����� �Է� �Լ�
+
+int main(void)
+{
+	int choice = 0;
+
+
+	printf("\n\n\n"); // ù ȭ��
+	printf("     ########  ##       ##########   ##        ####       ##         #######          \n");
+	printf("     ##        ##           ##       ##      ##    ##   ####        ##     ##         \n");
+	printf("     ##        ##          ####      ##      ##    ##     ##       ##       ##        \n");
+	printf("     ########  ####       ##  ##     ####      ####     ####    ################      \n");
+	printf("     ##        ##        ##    ##    ##                   ##       ##       ##        \n");
+	printf("     ##        ##       ##      ##   ##        ##                  ###########        \n");
+	printf("     ########  ##      ##        ##  ##        #############       ###########        \n");
+	printf("\n\n                      [ �����Ϸ��� �ƹ�Ű�� �������� ]\n");
+	getch();
+
+	while (1)
+	{
+		system("cls"); // �ܼ�â �ʱ�ȭ
+		printf("\n\n\n                            [ ���θ޴� ]\n\n\n\n\n"); // ���θ޴�
+		printf("                            1. ª�� �� ����\n\n");
+		printf("                            2. �� �� ����(������)\n\n");
+		printf("                            3. �꼺��\n\n");
+		printf("                            4. ��������\n\n");
+		printf("                       ����>");
+		scanf("%d", &choice);
+
+		switch (choice)
+		{
+		case 1:
+			short_article();
+			break;
+		case 2:
+			printf("������ �Դϴ�.");
+			break;
+		case 3:
+			gamemain(); // ������ �� �Լ� ȣ�� (���� ����)
+			break;
+		case 4:
+			system("cls"); // �ܼ�â �ʱ�ȭ
+			return 0; // ���� ����
+			break;
+		default: // �׿� �Է� ����
+			break;
+		}
+	}
+}
+
+/*
+void help() // ���� ��� �Լ�
+{
+	system("cls"); // �ܼ�â �ʱ�ȭ
+	printf("Ÿ�ڿ������� �� ��վ��� �߾��� �� ���� '�꼺��'�� C���� ������ �����Դϴ�.\n");
+	printf("�ϴÿ��� ������ �ܾ���� ���� �Է��Ͽ� �����ּ���!\n");
+	printf("�ϴ��� ���� �̿� ��(pH)�� 0�� �Ǹ� ������ ����˴ϴ�.\n");
+	printf("������ ����˴ϴ�. ���θ޴��� '2. ��Ϻ���'���� Ȯ�� �����մϴ�.\n\n");
+	printf("�Է��� ���� ���¿��� ���͸� ������ ȭ���� �ʱ�ȭ�Ǵ� ���װ� �ֽ��ϴ�.\n\n\n"); // ����
+	printf("�ƹ�Ű�� ������ ���� �޴��� �̵��մϴ�.");
+	getch();
+}
+
+void viewlog() // ���� ����� ����ϴ� �Լ�
+{
+	FILE *fp2 = NULL; // ���� ���� ������ �ҷ��� ���� ������
+	double s;
+	int cnt; // N��° ��ȣ�� �ޱ�
+	system("cls"); // �ܼ�â �ʱ�ȭ
+	printf("[ ���� ]\n\n\n");
+	fp2 = fopen("score.txt", "r"); // ���� ���� �ҷ�����
+	if (fp2 == NULL) // ���� ���� ����
+		printf("�ѹ��� ������ �Ͻ����� ���ų�,\n���� ������ �ҷ����µ� ������ �ֽ��ϴ�.\n");
+	else
+	{
+		cnt = 1; // ù��° ����
+		while (EOF != fscanf(fp2, "%lf", &s)) // ������ ���������� �����鼭
+		{
+			printf("%d. %.2lf��\n", cnt, s); // ���� ���
+			cnt++; // ���� ��ȣ
+		}
+	}
+	printf("\n\n�ƹ�Ű�� ������ ���θ޴��� �̵��մϴ�.");
+	getch();
+}
+*/
+
+
+void gamemain() // ������ �� �Լ�
+{
+	clock_t start, end; // ���� ����, ����(����) �ð�
+
+	ph = 7.0; // ���� �̿� �� 7.0���� �ʱ�ȭ
+	system("cls"); // �ܼ�â �ʱ�ȭ
+	initrains(); // �ܾ� �迭 �ʱ�ȭ
+
+
+	pthread_create(&p_thread, NULL, t_function, NULL);
+
+	start = clock(); // ���� ���� �ð� ���
+
+	while (ph > 0)
+	{
+		Sleep(SPEED); // ������ �ð���ŭ �ܾ� ���� ����
+		makerain(); // ���ο� �ܾ� ����
+		end = clock(); // �ش� �ܾ ������ �ð� ���
+		sec = (double)(end - start) / CLK_TCK; // ������� ������ �ð�
+		prnscreen(); // ȭ�� ���
+	}
+
+	pthread_cancel(p_thread);
+
+	printf("\nGame Over!\n");
+
+	printf("�ƹ�Ű�� ������ ���θ޴��� �̵��մϴ�.\n");
+	printf("���θ޴��� ��Ÿ���� ������ �ѹ� �� �Է����ּ���.");
+	getch();
+}
+
+void prnscreen() // ȭ�� ��� �Լ�
+{
+	int i;
+	system("cls"); // �ܼ�â �ʱ�ȭ
+	for (i = 0; i < 20; i++)
+	{
+		printf("%*s%s\n", rains[i].x, "", rains[i].word); // x��ǥ�� ���߾� ���������� �ܾ� ���
+	}
+	printf("~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~"); // ������(rains[20].word)
+	if (strcmp(rains[20].word, " ")) // �������� �ܾ ����������
+		ph -= 0.5; // 0.5�� �꼺ȭ ��Ŵ
+	printf("\n[ pH ] %.1lf  [ �ð� ] %.2lf��\n\n", ph, sec); // ���� �̿� �󵵿� �� �ð� ���
+	printf("�Է�>"); // ������� �Էº�
+}
+
+void makerain() // ���ο� �ܾ�(��)�� �����ϴ� �Լ�
+{
+	int i;
+	FILE *fp3;
+	fp3 = fopen("words.txt", "rt");
+
+	if (fp3 == NULL)
+		printf("�ܾ� ���� ���� ���� ����!\n\n");
+	else
+	{
+		words = (char **)malloc(sizeof(char *) * (WORD_COUNT + 1)); //�ؽ�Ʈ ���Ͽ��� �ܾ���� �ҷ���
+		
+	}
+
+	for (i = 0; i < WORD_COUNT; i++)
+	{
+		words[i] = (char *)malloc(sizeof(char) * (MAX_WORD_LENGTH + 1));
+		fgets(words[i], sizeof(char) * MAX_WORD_LENGTH, fp3);
+		words[i][strlen(words[i]) - 1] = '\0';
+	}
+
+	words[WORD_COUNT] = " ";
+
+	fclose(fp3);
+
+	for (i = 20; i >= 0; i--)
+	{
+		strcpy(rains[i].word, rains[i - 1].word); // ���� �ܾ�� �� �پ� �а�
+		rains[i].x = rains[i - 1].x;
+		rains[i - 1].x = 0;
+		strcpy(rains[i - 1].word, " "); // �� ���� ����ó��
+	}
+	rains[0].x = rand() % 53;
+	srand((unsigned)time(NULL));
+	strcpy(rains[0].word, words[rand() % WORD_COUNT]); // ���ο� �ܾ �������� ��ġ
+}
+
+void initrains() // �ܾ� �迭 �ʱ�ȭ �Լ� (��� ��������)
+{
+	int i;
+	for (i = 0; i < 21; i++)
+	{
+		rains[i].x = 0;
+		strcpy(rains[i].word, " ");
+	}
+}
+
+void *t_function (void *data) // ������ ó���� �ܾ� �Է� �Լ�
+{
+	while (ph > 0)
+	{
+		int i;
+		gets_s(buffer, 50);
+
+		for (i = 0; i < 20; i++)
+		{
+			if (buffer[0] == '\0')
+				;
+			else if (strstr(rains[i].word, buffer)) // �Է� ���� ��ġ�ϴ� �ܾ ������
+					strcpy(rains[i].word, ""); // �ش� �ܾ� ����
+		}
+	}
+}
+
+void short_article()
+{
+	system("cls");
+
+	clock_t start1, end1; // ���� ����, ����(����) �ð�
+
+	int i, j;
+	int typo_count = 0;
+
+	char s_buffer[80]; //�Ӵ� �� �� ����
+	char user_buffer[80]; // �Է� ����
+	char typo_buffer[100]; // ��Ÿ ����
+	char c = '\0'; // �ѱ��ھ� ó����
+	double sec1 = 0.0; // �ɸ� �ð� ���
+	int typing = 0; // Ÿ�� ����� ���� ī��Ʈ
+
+	int total = 0; //�Է��� �� Ÿ��
+	int typo = 0; //��Ÿ ��
+	double percent;
+
+	double typing_speed = 0; //Ÿ��
+
+	FILE *fp1;
+	fp1 = fopen("short_article.txt", "rt");
+
+	if (fp1 == NULL)
+		printf("�Ӵ� ���� ���� ����!\n\n");
+	else
+	{
+		s_article = (char **)malloc(sizeof(char *) * (S_ARTICLE_COUNT + 1)); //�ؽ�Ʈ ���Ͽ��� �ܾ���� �ҷ���
+
+	}
+
+	for (i = 0; i < S_ARTICLE_COUNT; i++)
+	{
+		s_article[i] = (char *)malloc(sizeof(char) * (S_ARTICLE_LENGTH + 1));
+		fgets(s_article[i], sizeof(char) * S_ARTICLE_LENGTH, fp1);
+		s_article[i][strlen(s_article[i]) - 1] = '\0';
+	}
+
+	s_article[S_ARTICLE_COUNT] = " ";
+
+	fclose(fp1);
+
+
+	for (j = 0; j < 80; j++) //�迭 �ʱ�ȭ
+		user_buffer[j] = '\0'; 
+
+	i = 0;
+
+	
+	strcpy(s_buffer, s_article[rand() % S_ARTICLE_COUNT]); // ���ο� ������ �������� ��ġ
+
+	printf("%s", s_buffer);
+
+	gotoxy (0, 1);
+
+
+	start1 = clock();
+
+	while (c != ESC)
+	{
+		c = _getch();
+
+		if (c == ESC)
+			break;
+
+		if (c == '\r' || i >= 80) // ���� �Ǵ� �迭�� �� á���� �ʱ�ȭ
+		{
+			system("cls"); // �ܼ�â �ʱ�ȭ
+
+			srand((unsigned)time(NULL));
+			strcpy(s_buffer, s_article[rand() % S_ARTICLE_COUNT]); // ���ο� ������ �������� ��ġ
+
+			printf("%s", s_buffer);
+
+			gotoxy(0, 1);
+
+			i = 0;
+
+			for (j = 0; j < 80; j++)
+				user_buffer[j] = '\0';
+	
+		}
+		else if (c == BS) // �齺���̽��� ������ ���� ����� �迭 ��ĭ �б�
+		{
+
+			if (user_buffer[1] == '\0') // �Է� ���۰� ��������� �ƹ� ���� ����
+				;
+			else
+			{
+				user_buffer[i] = '\0';
+				i--;
+				typing--;
+				putchar(' ');
+				gotoxy(i, 1);
+				putchar(' ');
+				gotoxy(i, 1);
+			}
+
+		}
+		else
+		{
+			putchar(c);
+			user_buffer[i] = c;
+			i++;
+			total++;
+
+			if (c != s_buffer[i - 1]) // �Է��� ���ڰ� Ʋ���� ��� ���� ǥ��
+			{
+				
+					typo++;
+					typo_buffer[typo_count] = s_buffer[i - 1];
+					typo_count++;
+				
+
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 4);
+				gotoxy(i - 1, 0);
+				printf("%c", s_buffer[i - 1]);
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+				gotoxy(i, 1);
+			}
+			else // �˸°� �Է����� ��/�ٽ� ������ �� ���� ������� ����
+			{
+				if (user_buffer[i - 1] == typo_buffer[typo_count - 1])
+				{
+					typo--;
+					typo_buffer[typo_count - 1] = '\0';
+					typo_count--;
+				}
+
+				typing++;
+				SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), 7);
+				gotoxy(i - 1, 0);
+				printf("%c", s_buffer[i - 1]);
+				gotoxy(i, 1);
+			
+			}
+		}
+
+	}
+
+	if (typing <= 0) // ���� �齺���̽��� ���� ī��Ʈ�� ������ �Ǹ� 0���� �ʱ�ȭ
+		typing = 0;
+
+	end1 = clock();
+
+	sec1 = (double)(end1 - start1) / CLK_TCK; // ������� ������ �ð�
+	percent = (((double)total - (double)typo) / (double)total) * 100; // ��Ȯ�� ���
+	typing_speed = 60 * (typing / sec1); //Ÿ�� ���
+
+
+	system("cls");
+
+	printf("�ɸ� �ð� : %.1lf�� \n", sec1);
+	printf("Ÿ�� : %.1lfŸ \n", typing_speed);
+	printf("��Ȯ�� :%.1lf \n", percent);
+
+	printf("\n\n\n");
+	printf("�ƹ�Ű�� ������ ���θ޴��� �̵��մϴ�.\n");
+	printf("���θ޴��� ��Ÿ���� ������ �ѹ� �� �Է����ּ���.");
+	getch();
+
+}
+
+void gotoxy(int x, int y)
+
+{
+
+	COORD Cur;
+
+	Cur.X = x;
+
+	Cur.Y = y;
+
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), Cur);
+
+}
+
